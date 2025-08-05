@@ -1,76 +1,76 @@
-import streamlit as st
 import pandas as pd
-import requests
-from datetime import datetime
+import streamlit as st
 
-# --------------------------
-# PAGE CONFIG
-# --------------------------
-st.set_page_config(
-    page_title="MLS Both Teams To Score (BTTS) Model",
-    layout="wide"
-)
+st.set_page_config(page_title="MLS BTTS / Totals Model", layout="wide")
+st.title("⚽ MLS BTTS / Totals Model")
 
-# --------------------------
-# TITLE
-# --------------------------
-st.title("⚽ MLS Both Teams To Score (BTTS) Model")
-st.write(f"Date: {datetime.now().strftime('%A, %B %d, %Y')}")
-st.markdown("Source: [FootyStats BTTS](https://footystats.org/usa/mls/btts)")
+# --- Google Sheet CSV link ---
+sheet_url = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/gviz/tq?tqx=out:csv"
 
-# --------------------------
-# LOAD DATA FUNCTION
-# --------------------------
-def load_btts_table():
-    url = "https://footystats.org/usa/mls/btts"
+try:
+    df = pd.read_csv(sheet_url)
+except Exception as e:
+    st.error(f"Failed to load MLS data: {e}")
+    st.stop()
+
+# Ensure numeric columns are clean
+for col in ["Home BTTS %", "Away BTTS %"]:
+    df[col] = df[col].astype(str).str.rstrip('%').astype(float)
+
+# Compute prediction and edge
+df["BTTS Prediction %"] = (df["Home BTTS %"] + df["Away BTTS %"]) / 2
+
+# Calculate edge if Book Odds exist (implied probability vs prediction)
+# Convert American odds to implied probability
+def odds_to_prob(odds):
     try:
-        html_content = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).text
-        tables = pd.read_html(html_content)
-        df = tables[0]
+        odds = float(odds)
+    except:
+        return None
+    if odds > 0:  # Positive odds
+        return 100 / (odds + 100) * 100
+    else:         # Negative odds
+        return abs(odds) / (abs(odds) + 100) * 100
 
-        # Clean and rename columns
-        df.columns = ["#", "Team", "MP", "BTTS", "BTTS %"]
-        df = df.drop("#", axis=1)
-        df["BTTS %"] = df["BTTS %"].astype(str)
-
-        return df
-    except Exception as e:
-        st.error(f"Failed to load BTTS table: {e}")
-        return pd.DataFrame(columns=["Team", "MP", "BTTS", "BTTS %"])
-
-# --------------------------
-# LOAD DATA
-# --------------------------
-btts_df = load_btts_table()
-
-if btts_df.empty:
-    st.error("❌ Failed to load BTTS table: No data found.")
+if "Book Odds" in df.columns:
+    df["Book Prob %"] = df["Book Odds"].apply(odds_to_prob)
+    df["Edge %"] = df["BTTS Prediction %"] - df["Book Prob %"]
 else:
-    # Display full table first
-    st.dataframe(btts_df, use_container_width=True)
+    df["Book Prob %"] = None
+    df["Edge %"] = None
 
-    # --------------------------
-    # CARD STYLE LAYOUT (Simplified)
-    # --------------------------
-    st.subheader("Matchup Cards (Simple View)")
+# --- Dropdown to filter ---
+st.subheader("Filter Market")
+market = st.selectbox("Choose Market", ["BTTS", "O1.5", "O2.5"], index=0)
 
-    # Simulate matchups by pairing teams in order (later will pull MLS fixtures)
-    for i in range(0, len(btts_df)-1, 2):
-        team1 = btts_df.iloc[i]
-        team2 = btts_df.iloc[i+1]
+# Filter df if needed
+if market != "BTTS" and market in df.columns:
+    df_filtered = df[df[market] == 1]
+else:
+    df_filtered = df.copy()
 
-        st.markdown(f"""
-        **Game Time:** TBD  
-        **{team1['Team']} vs {team2['Team']}**  
+# --- Display Game Cards ---
+for idx, row in df_filtered.iterrows():
+    with st.container():
+        st.markdown("---")
+        st.markdown(f"### 🕒 {row['Time (EST)']} — {row['Away Team']} @ {row['Home Team']}")
 
-        | Team | MP | BTTS | BTTS% | Model Pred | Odds | Edge |
-        |------|----|------|-------|-----------|------|------|
-        | {team1['Team']} | {team1['MP']} | {team1['BTTS']} | {team1['BTTS %']} | {(int(team1['BTTS %'].replace('%',''))+int(team2['BTTS %'].replace('%','')))//2}% | TBD | TBD |
-        | {team2['Team']} | {team2['MP']} | {team2['BTTS']} | {team2['BTTS %']} | {(int(team1['BTTS %'].replace('%',''))+int(team2['BTTS %'].replace('%','')))//2}% | TBD | TBD |
-        """)
-        st.write("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**🏠 {row['Home Team']}**")
+            st.markdown(f"BTTS: {row['Home BTTS %']:.0f}%")
+            st.markdown(f"Last 5: {row['Last 5 Home']}")
+        with col2:
+            st.markdown(f"**✈️ {row['Away Team']}**")
+            st.markdown(f"BTTS: {row['Away BTTS %']:.0f}%")
+            st.markdown(f"Last 5: {row['Last 5 Away']}")
 
-# --------------------------
-# BACK TO HOME BUTTON
-# --------------------------
-st.markdown("[⬅ Back to Home](https://lineupwire.com)")
+        # Prediction and odds
+        st.markdown(f"**Prediction:** {row['BTTS Prediction %']:.1f}%")
+        if pd.notna(row['Book Odds']):
+            st.markdown(f"**Book Odds:** {row['Book Odds']}")
+        if pd.notna(row['Edge %']):
+            st.markdown(f"**Edge:** {row['Edge %']:.1f}%")
+
+# Back to Homepage
+st.markdown("[⬅ Back to Homepage](https://lineupwire.com)")
