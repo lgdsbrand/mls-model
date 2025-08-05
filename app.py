@@ -8,7 +8,7 @@ st.set_page_config(page_title="⚽ MLS BTTS Model", layout="centered")
 
 # Google Sheet Info
 SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
-BASE_URL = "https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&sheet={bttsmodel}"
+BASE_URL = "https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&sheet=bttsmodel"
 
 # Dropdown Markets and Corresponding Sheet Tabs
 MARKETS = {
