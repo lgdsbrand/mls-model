@@ -28,7 +28,7 @@ model_choice = st.selectbox("Choose Model", list(TABS.keys()))
 
 # Build URL for the chosen tab
 selected_tab = TABS[model_choice]
-sheet_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={selected_tab}"
+sheet_url = f"https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&sheet={selected_tab}"
 
 # Load data
 try:
