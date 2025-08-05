@@ -6,28 +6,26 @@ import pandas as pd
 # -----------------------------
 st.set_page_config(page_title="⚽ Soccer Model", layout="wide")
 
-# Your Google Sheet ID
+# Google Sheet info
 SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
-
-# Tabs now use GID numbers from your Google Sheet URLs
 TABS = {
-    "BTTS Model": "330489283",         # replace with real gid
-    "Over 1.5 Model": "1079325547", # replace with real gid
-    "Over 2.5 Model": "433715336"  # replace with real gid
+    "BTTS Model": "bttsmodel",
+    "Over 1.5 Model": "o1.5model",
+    "Over 2.5 Model": "o2.5model"
 }
 
 # -----------------------------
 # HEADER
 # -----------------------------
 st.title("⚽ Soccer Both Teams To Score & Overs Model")
-st.write("Source: Google Sheets (auto-updated via ImportHTML)")
+st.write("Source: Google Sheets (auto-updated via Apps Script)")
 
 # Dropdown for model selection
 model_choice = st.selectbox("Choose Model", list(TABS.keys()))
+selected_tab = TABS[model_choice]
 
-# Build URL using gid for the chosen tab
-selected_gid = TABS[model_choice]
-sheet_url = f"https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&gid={selected_gid}"
+# Google Sheet CSV URL
+sheet_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={selected_tab}"
 
 # -----------------------------
 # LOAD DATA
@@ -49,23 +47,28 @@ st.subheader(f"{model_choice} - Upcoming Matches")
 
 for _, row in df.iterrows():
     with st.container():
-        st.markdown("---")  # divider
+        st.markdown("---")  # divider line
+
+        # Game time
         st.markdown(f"**⏰ {row['Time']}**")
 
-        # Teams stacked
+        # Teams stacked vertically
         st.markdown(f"""
         **{row['Home Team']}**  
         **{row['Away Team']}**
         """)
 
-        # Table of stats
+        # Stats table for card view
         card_data = pd.DataFrame({
-            "MP": [row["MP"]],
-            "Stat": [row.get("BTTS", row.get("O1.5", row.get("O2.5", "")))],
-            "%": [row["%"]],
+            "Overall%": [row["Overall%"]],
+            "Home%": [row["Home%"]],
+            "Away%": [row["Away%"]],
             "% Prediction": [row["% Prediction"]],
-            "Book Odds": [row["Book Odds"]],
-            "Edge +/-": [row["Edge +/-"]]
+            "Book Odds": [row.get("Book Odds", "")],
+            "Edge +/-": [row.get("Edge +/-", "")]
         })
 
-        st.table(card_data)
+        st.dataframe(card_data, use_container_width=True)
+
+st.markdown("---")
+st.markdown("Return to [Home Page](https://lineupwire.com)")
