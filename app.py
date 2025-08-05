@@ -1,75 +1,73 @@
 import streamlit as st
 import pandas as pd
+import requests
 
 # -----------------------------
 # CONFIG
 # -----------------------------
-st.set_page_config(layout="wide", page_title="MLS Soccer Models")
+st.set_page_config(page_title="⚽ Soccer Model", layout="wide")
 
-# Google Sheet info
+# Your Google Sheet ID
 SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
-TAB_MAP = {
-    "BTTS": "bttsmodel",
-    "Over 1.5": "o1_5model",
-    "Over 2.5": "o2_5model"
+
+# Tabs that exist in your Google Sheet
+TABS = {
+    "BTTS Model": "bttsmodel",
+    "Over 1.5 Model": "o1.5model",
+    "Over 2.5 Model": "o2.5model"
 }
 
-# Dropdown menu
-model_choice = st.selectbox(
-    "Select Soccer Model",
-    list(TAB_MAP.keys())
-)
-selected_tab = TAB_MAP[model_choice]
+# -----------------------------
+# HEADER
+# -----------------------------
+st.title("⚽ Soccer Both Teams To Score & Overs Model")
+st.write("Source: Google Sheets (auto-updated via ImportHTML)")
 
-# Build CSV export URL for the chosen tab
+# Dropdown for model selection
+model_choice = st.selectbox("Choose Model", list(TABS.keys()))
+
+# Build URL for the chosen tab
+selected_tab = TABS[model_choice]
 sheet_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={selected_tab}"
 
-# -----------------------------
-# LOAD DATA
-# -----------------------------
+# Load data
 try:
     df = pd.read_csv(sheet_url)
 except Exception as e:
-    st.error(f"Failed to load Google Sheet data. Error: {e}")
+    st.error(f"Failed to load table: {e}")
     st.stop()
 
-df.dropna(how="all", inplace=True)
+if df.empty:
+    st.error("No data found in the selected Google Sheet tab.")
+    st.stop()
 
 # -----------------------------
-# TITLE & NAV
+# CARD VIEW
 # -----------------------------
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.title(f"MLS ⚽ {model_choice} Model")
-with col2:
-    st.markdown("[⬅️ Back to Homepage](https://lineupwiremlb.streamlit.app)")
+st.subheader(f"{model_choice} - Upcoming Matches")
 
-# Show today's date
-st.markdown(f"### 📅 Upcoming Matches for: **{pd.Timestamp.now().strftime('%B %d, %Y')}**")
-st.markdown("---")
-
-# -----------------------------
-# STACKED CARD LAYOUT
-# -----------------------------
-for idx, row in df.iterrows():
+for _, row in df.iterrows():
+    # Build each game card
     with st.container():
-        st.markdown("---")  # Card separator
+        st.markdown("---")  # divider
+        st.markdown(f"**⏰ {row['Time']}**")
         
-        # Match header
-        st.markdown(f"#### 🕒 {row['Time']} — {row['Home Team']} vs {row['Away Team']}")
+        # Teams stacked
+        st.markdown(f"""
+        **{row['Home Team']}**  
+        **{row['Away Team']}**
+        """)
         
-        # Card content
-        col1, col2, col3 = st.columns([2, 1, 1])
-
-        with col1:
-            st.markdown(f"**Prediction %:** {round(row['Prediction %'], 1)}%")
-            st.markdown(f"**Matches Played:** {row['MP']}")
-        
-        with col2:
-            st.markdown(f"**Book Odds:** {row['Book Odds']}")
-        
-        with col3:
-            st.markdown(f"**Edge:** {round(row['Edge'], 2)}")
+        # Table of stats
+        card_data = pd.DataFrame({
+            "MP": [row["MP"]],
+            "Stat": [row.get("BTTS", row.get("O1.5", row.get("O2.5", "")))],
+            "%": [row["%"]],
+            "% Prediction": [row["% Prediction"]],
+            "Book Odds": [row["Book Odds"]],
+            "Edge +/-": [row["Edge +/-"]]
+        })
+        st.table(card_data)
 
 st.markdown("---")
-st.caption("LineupWire MLS Models | Auto-updated daily via Google Sheets")
+st.markdown("[⬅ Back to Homepage](https://lineupwire.com)")
