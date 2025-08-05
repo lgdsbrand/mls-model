@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 
 # -------------------------
 # CONFIG
@@ -28,11 +27,9 @@ def scrape_btts_table():
     resp = requests.get(url, headers=headers)
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # Table parsing
     table = soup.find("table")
     df = pd.read_html(str(table))[0]
 
-    # Clean columns
     df.columns = ["Team", "Pld", "BTTS", "HitRate"]
     df["HitRate"] = df["HitRate"].str.replace("%", "").astype(float)
 
@@ -73,7 +70,7 @@ for _, row in matches_df.iterrows():
 
     st.markdown(f"### {away} @ {home}  |  ⏰ {time}")
 
-    # Last 5 match form placeholder
+    # Placeholder for last 5 match form
     st.write("Form: 🟥🟩⬜  vs  🟩🟥⬜")  # Replace with real scrape later
 
     cols = st.columns([2,2,2,2,2,2])
@@ -81,7 +78,6 @@ for _, row in matches_df.iterrows():
     cols[1].metric("BTTS%", f"{(home_hit+away_hit)/2:.0f}%")
     cols[2].metric("Model Pred", f"{model_pred:.1f}%")
     cols[3].metric("Odds", f"{odds:.2f}")
-    edge_color = "green" if edge > 0 else "red"
-    cols[4].markdown(f"<span style='color:{edge_color}'>{edge*100:.1f}%</span>", unsafe_allow_html=True)
+    cols[4].metric("Edge", f"{edge*100:.1f}%")
 
     st.markdown("---")
