@@ -11,9 +11,9 @@ SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
 
 # Tabs now use GID numbers from your Google Sheet URLs
 TABS = {
-    "BTTS Model": "0",         # replace with real gid
-    "Over 1.5 Model": "123456", # replace with real gid
-    "Over 2.5 Model": "987654"  # replace with real gid
+    "BTTS Model": "330489283",         # replace with real gid
+    "Over 1.5 Model": "1079325547", # replace with real gid
+    "Over 2.5 Model": "433715336"  # replace with real gid
 }
 
 # -----------------------------
@@ -27,7 +27,7 @@ model_choice = st.selectbox("Choose Model", list(TABS.keys()))
 
 # Build URL using gid for the chosen tab
 selected_gid = TABS[model_choice]
-sheet_url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid={selected_gid}"
+sheet_url = f"https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&gid={selected_gid}"
 
 # -----------------------------
 # LOAD DATA
