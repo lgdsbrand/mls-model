@@ -1,78 +1,76 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 
 # -----------------------------
-# PAGE CONFIG
+# CONFIG
 # -----------------------------
-st.set_page_config(page_title="⚽ MLS BTTS Model", layout="centered")
+st.set_page_config(layout="wide", page_title="MLS Soccer Models")
 
-# Google Sheet Info
-SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
-BASE_URL = "https://docs.google.com/spreadsheets/d/{16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y}/gviz/tq?tqx=out:csv&sheet=bttsmodel"
+# Define dropdown menu
+model_choice = st.selectbox(
+    "Select Soccer Model",
+    ["BTTS", "Over 1.5", "Over 2.5"]
+)
 
-# Dropdown Markets and Corresponding Sheet Tabs
-MARKETS = {
+# Map dropdown selection to Google Sheet tab
+sheet_map = {
     "BTTS": "bttsmodel",
-    "Over 1.5": "o1.5model",
-    "Over 2.5": "o2.5model"
+    "Over 1.5": "o1_5model",
+    "Over 2.5": "o2_5model"
 }
 
-# -----------------------------
-# HEADER
-# -----------------------------
-st.title("⚽ MLS Model (BTTS / O1.5 / O2.5)")
-
-# Dropdown to select market
-market_choice = st.selectbox("Select Market", list(MARKETS.keys()))
-sheet_name = MARKETS[market_choice]
-csv_url = BASE_URL.format(SHEET_ID, sheet_name)
+selected_sheet = sheet_map[model_choice]
 
 # -----------------------------
 # LOAD DATA FROM GOOGLE SHEETS
 # -----------------------------
+sheet_id = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
+url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={selected_sheet}"
+
 try:
-    df = pd.read_csv(csv_url)
+    df = pd.read_csv(url)
 except Exception as e:
-    st.error(f"Failed to load data: {e}")
+    st.error(f"Failed to load Google Sheet data. Error: {e}")
     st.stop()
 
-if df.empty:
-    st.warning("No games found for this market.")
-    st.stop()
-
-# Clean up column names to match Google Sheet
-df.columns = [col.strip() for col in df.columns]
+# Clean data
+df.dropna(how='all', inplace=True)
 
 # -----------------------------
-# DISPLAY STACKED CARDS
+# TITLE & NAV
 # -----------------------------
-for _, row in df.iterrows():
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.title(f"MLS ⚽ {model_choice} Model")
+with col2:
+    st.markdown("[⬅️ Back to Homepage](https://lineupwiremlb.streamlit.app)")
+
+# Show today's date
+st.markdown(f"### 📅 Upcoming Matches for: **{pd.Timestamp.now().strftime('%B %d, %Y')}**")
+st.markdown("---")
+
+# -----------------------------
+# STACKED CARD LAYOUT
+# -----------------------------
+for idx, row in df.iterrows():
     with st.container():
-        # Card Header: Game Time
-        st.markdown(f"### ⏰ {row['Time']}")
-        st.markdown("---")
+        st.markdown("---")  # Card separator
+        
+        # Match header
+        st.markdown(f"#### 🕒 {row['Time']}  —  {row['Home Team']} vs {row['Away Team']}")
+        
+        # Card content
+        col1, col2, col3 = st.columns([2, 1, 1])
 
-        # Home Team Row
-        st.markdown(
-            f"**{row['Home Team']}** | "
-            f"MP: {row['MP']} | "
-            f"{market_choice}: {row.get(market_choice, '')} | "
-            f"Hit Rate: {row['%']} | "
-            f"Model: {row['% Prediction']} | "
-            f"Odds: {row['Book Odds']} | "
-            f"Edge: {row['Edge +/-']}"
-        )
+        with col1:
+            st.markdown(f"**Prediction %:** {round(row['Prediction %'],1)}%")
+            st.markdown(f"**Matches Played:** {row['MP']}")
+        
+        with col2:
+            st.markdown(f"**Book Odds:** {row['Book Odds']}")
+        
+        with col3:
+            st.markdown(f"**Edge:** {round(row['Edge'],2)}")
 
-        # Away Team Row
-        st.markdown(
-            f"**{row['Away Team']}** | "
-            f"MP: {row['MP']} | "
-            f"{market_choice}: {row.get(market_choice, '')} | "
-            f"Hit Rate: {row['%']} | "
-            f"Model: {row['% Prediction']} | "
-            f"Odds: {row['Book Odds']} | "
-            f"Edge: {row['Edge +/-']}"
-        )
-
-        # Divider Between Games
-        st.markdown("---")
+st.markdown("---")
+st.caption("LineupWire MLS Models | Auto-updated daily via Google Sheets")
