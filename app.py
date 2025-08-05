@@ -1,8 +1,13 @@
 import pandas as pd
 import streamlit as st
+from datetime import datetime
 
 st.set_page_config(page_title="MLS BTTS / Totals Model", layout="wide")
 st.title("⚽ MLS BTTS / Totals Model")
+
+# Show current date at the top
+today = datetime.now().strftime("%A, %B %d, %Y")
+st.markdown(f"### Matches for {today}")
 
 # --- Google Sheet CSV link ---
 sheet_url = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/gviz/tq?tqx=out:csv"
@@ -13,6 +18,10 @@ except Exception as e:
     st.error(f"Failed to load MLS data: {e}")
     st.stop()
 
+# Drop Date column if it exists
+if 'Date' in df.columns:
+    df = df.drop(columns=['Date'])
+
 # Ensure numeric columns are clean
 for col in ["Home BTTS %", "Away BTTS %"]:
     df[col] = df[col].astype(str).str.rstrip('%').astype(float)
@@ -20,16 +29,15 @@ for col in ["Home BTTS %", "Away BTTS %"]:
 # Compute prediction and edge
 df["BTTS Prediction %"] = (df["Home BTTS %"] + df["Away BTTS %"]) / 2
 
-# Calculate edge if Book Odds exist (implied probability vs prediction)
-# Convert American odds to implied probability
+# Convert Book Odds (American) to implied probability and calculate edge
 def odds_to_prob(odds):
     try:
         odds = float(odds)
     except:
         return None
-    if odds > 0:  # Positive odds
+    if odds > 0:
         return 100 / (odds + 100) * 100
-    else:         # Negative odds
+    else:
         return abs(odds) / (abs(odds) + 100) * 100
 
 if "Book Odds" in df.columns:
@@ -59,11 +67,9 @@ for idx, row in df_filtered.iterrows():
         with col1:
             st.markdown(f"**🏠 {row['Home Team']}**")
             st.markdown(f"BTTS: {row['Home BTTS %']:.0f}%")
-            st.markdown(f"Last 5: {row['Last 5 Home']}")
         with col2:
             st.markdown(f"**✈️ {row['Away Team']}**")
             st.markdown(f"BTTS: {row['Away BTTS %']:.0f}%")
-            st.markdown(f"Last 5: {row['Last 5 Away']}")
 
         # Prediction and odds
         st.markdown(f"**Prediction:** {row['BTTS Prediction %']:.1f}%")
@@ -72,5 +78,4 @@ for idx, row in df_filtered.iterrows():
         if pd.notna(row['Edge %']):
             st.markdown(f"**Edge:** {row['Edge %']:.1f}%")
 
-# Back to Homepage
 st.markdown("[⬅ Back to Homepage](https://lineupwire.com)")
