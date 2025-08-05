@@ -1,81 +1,55 @@
 import pandas as pd
 import streamlit as st
-from datetime import datetime
 
-st.set_page_config(page_title="MLS BTTS / Totals Model", layout="wide")
-st.title("⚽ MLS BTTS / Totals Model")
+# -----------------------------
+# CONFIG
+# -----------------------------
+st.set_page_config(page_title="MLS BTTS Model", layout="wide")
 
-# Show current date at the top
-today = datetime.now().strftime("%A, %B %d, %Y")
-st.markdown(f"### Matches for {today}")
+# Google Sheet CSV links (replace YOUR_SHEET_ID)
+BASE_URL = "https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}"
+SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
 
-# --- Google Sheet CSV link ---
-sheet_url = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/gviz/tq?tqx=out:csv"
+TABS = {
+    "BTTS": "bttsmodel",
+    "Over 1.5": "o1.5model",
+    "Over 2.5": "o2.5model"
+}
 
+# -----------------------------
+# SIDEBAR & HEADER
+# -----------------------------
+st.title("⚽ MLS Both Teams To Score (BTTS) Model")
+st.markdown("Data Source: Google Sheets (auto-updating)")
+
+# Dropdown for model selection
+selected_tab = st.selectbox("Select Market", list(TABS.keys()))
+
+# -----------------------------
+# LOAD DATA
+# -----------------------------
+csv_url = BASE_URL.format(SHEET_ID, TABS[selected_tab])
 try:
-    df = pd.read_csv(sheet_url)
-except Exception as e:
-    st.error(f"Failed to load MLS data: {e}")
+    df = pd.read_csv(csv_url)
+except:
+    st.error("Failed to load model data from Google Sheets. Check sharing permissions.")
     st.stop()
 
-# Drop Date column if it exists
-if 'Date' in df.columns:
-    df = df.drop(columns=['Date'])
-
-# Ensure numeric columns are clean
-for col in ["Home BTTS %", "Away BTTS %"]:
-    df[col] = df[col].astype(str).str.rstrip('%').astype(float)
-
-# Compute prediction and edge
-df["BTTS Prediction %"] = (df["Home BTTS %"] + df["Away BTTS %"]) / 2
-
-# Convert Book Odds (American) to implied probability and calculate edge
-def odds_to_prob(odds):
-    try:
-        odds = float(odds)
-    except:
-        return None
-    if odds > 0:
-        return 100 / (odds + 100) * 100
-    else:
-        return abs(odds) / (abs(odds) + 100) * 100
-
-if "Book Odds" in df.columns:
-    df["Book Prob %"] = df["Book Odds"].apply(odds_to_prob)
-    df["Edge %"] = df["BTTS Prediction %"] - df["Book Prob %"]
+# -----------------------------
+# DISPLAY CARDS
+# -----------------------------
+if df.empty:
+    st.warning("No games available for this market today.")
 else:
-    df["Book Prob %"] = None
-    df["Edge %"] = None
-
-# --- Dropdown to filter ---
-st.subheader("Filter Market")
-market = st.selectbox("Choose Market", ["BTTS", "O1.5", "O2.5"], index=0)
-
-# Filter df if needed
-if market != "BTTS" and market in df.columns:
-    df_filtered = df[df[market] == 1]
-else:
-    df_filtered = df.copy()
-
-# --- Display Game Cards ---
-for idx, row in df_filtered.iterrows():
-    with st.container():
-        st.markdown("---")
-        st.markdown(f"### 🕒 {row['Time (EST)']} — {row['Away Team']} @ {row['Home Team']}")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"**🏠 {row['Home Team']}**")
-            st.markdown(f"BTTS: {row['Home BTTS %']:.0f}%")
-        with col2:
-            st.markdown(f"**✈️ {row['Away Team']}**")
-            st.markdown(f"BTTS: {row['Away BTTS %']:.0f}%")
-
-        # Prediction and odds
-        st.markdown(f"**Prediction:** {row['BTTS Prediction %']:.1f}%")
-        if pd.notna(row['Book Odds']):
-            st.markdown(f"**Book Odds:** {row['Book Odds']}")
-        if pd.notna(row['Edge %']):
-            st.markdown(f"**Edge:** {row['Edge %']:.1f}%")
-
-st.markdown("[⬅ Back to Homepage](https://lineupwire.com)")
+    for _, row in df.iterrows():
+        with st.container():
+            st.markdown(f"""
+            ### {row['Time']}
+            **{row['Home Team']}** vs **{row['Away Team']}**
+            
+            **MP:** {row['MP']} | **{selected_tab}:** {row[selected_tab]} | **Hit Rate:** {row['%']}
+            
+            **Model Prediction:** {row['% Prediction']}  
+            **Book Odds:** {row['Book Odds']} | **Edge:** {row['Edge +/-']}
+            ---
+            """)
