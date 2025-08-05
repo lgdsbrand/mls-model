@@ -5,4 +5,4 @@ requests
 beautifulsoup4
 lxml
 html5lib
-requests-html
+requests_html
