@@ -2,54 +2,77 @@ import pandas as pd
 import streamlit as st
 
 # -----------------------------
-# CONFIG
+# PAGE CONFIG
 # -----------------------------
-st.set_page_config(page_title="MLS BTTS Model", layout="wide")
+st.set_page_config(page_title="⚽ MLS BTTS Model", layout="centered")
 
-# Google Sheet CSV links (replace YOUR_SHEET_ID)
-BASE_URL = "https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}"
+# Google Sheet Info
 SHEET_ID = "16OxnlyJjmeUc28bpOU2Q733hWDuBXfatYy5f6_o7W3Y"
+BASE_URL = "https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}"
 
-TABS = {
+# Dropdown Markets and Corresponding Sheet Tabs
+MARKETS = {
     "BTTS": "bttsmodel",
     "Over 1.5": "o1.5model",
     "Over 2.5": "o2.5model"
 }
 
 # -----------------------------
-# SIDEBAR & HEADER
+# HEADER
 # -----------------------------
-st.title("⚽ MLS Both Teams To Score (BTTS) Model")
-st.markdown("Data Source: Google Sheets (auto-updating)")
+st.title("⚽ MLS Model (BTTS / O1.5 / O2.5)")
 
-# Dropdown for model selection
-selected_tab = st.selectbox("Select Market", list(TABS.keys()))
+# Dropdown to select market
+market_choice = st.selectbox("Select Market", list(MARKETS.keys()))
+sheet_name = MARKETS[market_choice]
+csv_url = BASE_URL.format(SHEET_ID, sheet_name)
 
 # -----------------------------
-# LOAD DATA
+# LOAD DATA FROM GOOGLE SHEETS
 # -----------------------------
-csv_url = BASE_URL.format(SHEET_ID, TABS[selected_tab])
 try:
     df = pd.read_csv(csv_url)
-except:
-    st.error("Failed to load model data from Google Sheets. Check sharing permissions.")
+except Exception as e:
+    st.error(f"Failed to load data: {e}")
     st.stop()
 
-# -----------------------------
-# DISPLAY CARDS
-# -----------------------------
 if df.empty:
-    st.warning("No games available for this market today.")
-else:
-    for _, row in df.iterrows():
-        with st.container():
-            st.markdown(f"""
-            ### {row['Time']}
-            **{row['Home Team']}** vs **{row['Away Team']}**
-            
-            **MP:** {row['MP']} | **{selected_tab}:** {row[selected_tab]} | **Hit Rate:** {row['%']}
-            
-            **Model Prediction:** {row['% Prediction']}  
-            **Book Odds:** {row['Book Odds']} | **Edge:** {row['Edge +/-']}
-            ---
-            """)
+    st.warning("No games found for this market.")
+    st.stop()
+
+# Clean up column names to match Google Sheet
+df.columns = [col.strip() for col in df.columns]
+
+# -----------------------------
+# DISPLAY STACKED CARDS
+# -----------------------------
+for _, row in df.iterrows():
+    with st.container():
+        # Card Header: Game Time
+        st.markdown(f"### ⏰ {row['Time']}")
+        st.markdown("---")
+
+        # Home Team Row
+        st.markdown(
+            f"**{row['Home Team']}** | "
+            f"MP: {row['MP']} | "
+            f"{market_choice}: {row.get(market_choice, '')} | "
+            f"Hit Rate: {row['%']} | "
+            f"Model: {row['% Prediction']} | "
+            f"Odds: {row['Book Odds']} | "
+            f"Edge: {row['Edge +/-']}"
+        )
+
+        # Away Team Row
+        st.markdown(
+            f"**{row['Away Team']}** | "
+            f"MP: {row['MP']} | "
+            f"{market_choice}: {row.get(market_choice, '')} | "
+            f"Hit Rate: {row['%']} | "
+            f"Model: {row['% Prediction']} | "
+            f"Odds: {row['Book Odds']} | "
+            f"Edge: {row['Edge +/-']}"
+        )
+
+        # Divider Between Games
+        st.markdown("---")
